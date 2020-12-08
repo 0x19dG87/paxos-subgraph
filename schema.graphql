@@ -1,0 +1,55 @@
+type User @entity {
+    id: ID!
+    address: Bytes!
+    tokens: [TokenUser!]! @derivedFrom(field: "user")
+    outTransactions: [Transaction]! @derivedFrom(field: "from")
+    inTransactions: [Transaction]! @derivedFrom(field: "to")
+}
+
+type Token @entity {
+    id: ID!
+    symbol: String! #Token's symbol
+    name: String  #Token's name
+    transfersCount: BigInt! #Number of transfers
+    holdersCount: BigInt! #Number of holders
+    users: [TokenUser!]! @derivedFrom(field: "token")
+    supply: Supply! @derivedFrom(field: "token")
+    transactions: [Transaction]! @derivedFrom(field: "token")
+}
+
+type TokenUser @entity {
+    id: ID!
+    token: Token!
+    user: User!
+    balance: BigDecimal
+    isFrozenBalance: Boolean
+    isSupplyController: Boolean
+    transferCount: BigInt!
+}
+
+type Supply @entity {
+    id: ID!
+    token: Token!
+    controllers: [User!]!
+    minted: BigDecimal!
+    burned: BigDecimal!
+    frozen:BigDecimal!
+    total: BigDecimal!
+}
+
+type Transaction @entity {
+    id: ID!
+    block: BigInt!
+    timestamp: BigInt!
+    transactionType: TransactionType!
+    from: User!
+    to: User!
+    token: Token!
+    amount: BigDecimal!
+}
+
+enum TransactionType {
+    Mint
+    Burn
+    Transfer
+}
