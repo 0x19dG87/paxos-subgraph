@@ -386,9 +386,9 @@ export class BetaDelegateUnwhitelisted__Params {
   }
 }
 
-export class Pax extends ethereum.SmartContract {
-  static bind(address: Address): Pax {
-    return new Pax("Pax", address);
+export class PaxFactory extends ethereum.SmartContract {
+  static bind(address: Address): PaxFactory {
+    return new PaxFactory("PaxFactory", address);
   }
 
   name(): string {

@@ -3,9 +3,9 @@ import {
     AddressUnfrozen,
     SupplyControllerSet,
     AssetProtectionRoleSet,
-    Transfer as TransferEvent
-} from './types/PAX/Pax'
-import {Factory} from "./types/Factory/Factory"
+    Transfer as TransferEvent,
+    PaxFactory as Factory
+} from './types/PaxFactory/PaxFactory'
 import {Supply, Token, TokenUser, Transaction, User} from './types/schema'
 import {Address, BigInt, Bytes} from '@graphprotocol/graph-ts'
 import {ADDRESS_ZERO, AddressType, BI_ONE, BI_ZERO, getUser, TokenUserRoleField, TransactionType} from './helper'
@@ -100,7 +100,11 @@ function changeTokenUserRole(oldAddress: Address, newAddress: Address, tokenSymb
     //Remove SupplyController role from old user
     let oldTokenUser = TokenUser.load(getTokenUserId(tokenSymbol, oldAddress))
     if (oldTokenUser != null) {
-        oldTokenUser[roleField] = false
+        if (roleField == TokenUserRoleField.isAssetProtector) {
+            oldTokenUser.isAssetProtector = false;
+        } else if (roleField == TokenUserRoleField.isSupplyController) {
+            oldTokenUser.isSupplyController = false;
+        }
         oldTokenUser.save()
     }
 
@@ -109,7 +113,12 @@ function changeTokenUserRole(oldAddress: Address, newAddress: Address, tokenSymb
     let newUser = getUser(newAddress)
     let newTokenUser = getTokenUserInitial(newToken, newUser)
 
-    newTokenUser[roleField] = true
+    if (roleField == TokenUserRoleField.isAssetProtector) {
+        newTokenUser.isAssetProtector = true;
+    } else if (roleField == TokenUserRoleField.isSupplyController) {
+        newTokenUser.isSupplyController = true;
+    }
+
     newTokenUser.save()
 }
 
@@ -163,7 +172,11 @@ function getSupplyInitial(tokenSymbol: string): Supply {
 
         supply.controllers = []
         let supplyControllerUsers = supply.controllers
-        supplyControllerUsers.push(getUser(contract.supplyController()).id)
+
+        let supplyControllerResult = contract.try_supplyController()
+        if (!supplyControllerResult.reverted) {
+            supplyControllerUsers.push(getUser(supplyControllerResult.value).id)
+        }
         supply.controllers = supplyControllerUsers
 
         supply.save()
@@ -199,8 +212,10 @@ function getTokenUserInitial(token: Token, user: User): TokenUser {
         tokenUser.token = token.id
         tokenUser.user = user.id
         tokenUser.isFrozenBalance = false
-        tokenUser.isSupplyController = contract.supplyController() == user.address
-        tokenUser.isAssetProtector = contract.assetProtectionRole() == user.address
+        let supplyControllerResult = contract.try_supplyController()
+        tokenUser.isSupplyController = !supplyControllerResult.reverted && supplyControllerResult.value == user.address
+        let assetProtectorResult = contract.try_assetProtectionRole()
+        tokenUser.isAssetProtector = !assetProtectorResult.reverted && assetProtectorResult.value == user.address
         tokenUser.transferCount = BI_ZERO
         tokenUser.inTransferCount = BI_ZERO
         tokenUser.outTransferCount = BI_ZERO
