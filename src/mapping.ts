@@ -8,7 +8,7 @@ import {
 } from './types/PAX/Pax'
 import {Factory} from "./types/Factory/Factory"
 import {Supply, Token, TokenUser, Transaction, User} from './types/schema'
-import {Address, BigInt} from '@graphprotocol/graph-ts'
+import {Address, BigInt, Bytes} from '@graphprotocol/graph-ts'
 import {ADDRESS_ZERO, AddressType, BI_ONE, BI_ZERO, getUser, TokenUserRoleField, TransactionType} from './helper'
 
 let contract: Factory
@@ -78,11 +78,11 @@ export function handleWipeFrozenAddress(event: FrozenAddressWiped): void {
 
 }
 
-function changeTokenUserRole(oldAddress: Address, newAddress: Address, tokenSymbol: string, roleField: TokenUserRoleField): void {
+function changeTokenUserRole(oldAddress: Address, newAddress: Address, tokenSymbol: string, roleField: string): void {
     //Remove SupplyController role from old user
     let oldTokenUser = TokenUser.load(getTokenUserId(tokenSymbol, oldAddress))
     if (oldTokenUser != null) {
-        oldTokenUser[roleField.toString()] = false
+        oldTokenUser[roleField] = false
         oldTokenUser.save()
     }
 
@@ -91,7 +91,7 @@ function changeTokenUserRole(oldAddress: Address, newAddress: Address, tokenSymb
     let newUser = getUser(newAddress)
     let newTokenUser = getTokenUserInitial(newToken, newUser)
 
-    newTokenUser[roleField.toString()] = true
+    newTokenUser[roleField] = true
     newTokenUser.save()
 }
 
@@ -104,24 +104,17 @@ function getTransaction(event: TransferEvent, token: Token, fromUser: User, toUs
     trx.toAddr = toUser.id
     trx.token = token.id
 
-    switch (ADDRESS_ZERO) {
-        case event.params.to.toHexString(): {
-            trx.transactionType = TransactionType.Burn.toString()
-            break
-        }
-        case event.params.from.toHexString(): {
-            trx.transactionType = TransactionType.Mint.toString()
-            break
-        }
-        default: {
-            trx.transactionType = TransactionType.Transfer.toString()
-            break
-        }
+    if (ADDRESS_ZERO == event.params.to) {
+        trx.transactionType = TransactionType.Burn
+    } else if (ADDRESS_ZERO == event.params.from) {
+        trx.transactionType = TransactionType.Mint
+    } else {
+        trx.transactionType = TransactionType.Transfer
     }
 
     trx.save()
 
-    return trx
+    return trx as Transaction
 }
 
 function getSupply(trx: Transaction, token: Token): Supply {
@@ -140,48 +133,36 @@ function getSupply(trx: Transaction, token: Token): Supply {
         supply.controllers = supplyControllerUsers
     }
 
-    switch (trx.transactionType) {
-        case TransactionType.Mint.toString(): {
-            supply.minted.plus(trx.amount)
-            supply.total.plus(trx.amount)
-            break
-        }
-        case TransactionType.Burn.toString(): {
-            supply.burned.plus(trx.amount)
-            supply.total.minus(trx.amount)
-            break
-        }
+    if (trx.transactionType == TransactionType.Mint) {
+        supply.minted.plus(trx.amount)
+        supply.total.plus(trx.amount)
+    } else if (trx.transactionType == TransactionType.Burn) {
+        supply.burned.plus(trx.amount)
+        supply.total.minus(trx.amount)
     }
 
     supply.save()
 
-    return supply
+    return supply as Supply
 }
 
-function getTokenUser(token: Token, user: User, addrType: AddressType, amount: BigInt): TokenUser {
+function getTokenUser(token: Token, user: User, addrType: string, amount: BigInt): TokenUser {
     let tokenUser = getTokenUserInitial(token, user)
     tokenUser.transferCount.plus(BI_ONE)
-    switch (addrType) {
-        case AddressType.From: {
-            tokenUser.outTransferCount.plus(BI_ONE)
-            tokenUser.totalOutcome.plus(amount)
-            tokenUser.balance.minus(amount)
-            break
-        }
-        case AddressType.To: {
-            tokenUser.inTransferCount.plus(BI_ONE)
-            tokenUser.totalIncome.plus(amount)
-            tokenUser.balance.plus(amount)
-            break
-        }
-        default: {
-            break
-        }
+
+    if (addrType == AddressType.From) {
+        tokenUser.outTransferCount.plus(BI_ONE)
+        tokenUser.totalOutcome.plus(amount)
+        tokenUser.balance.minus(amount)
+    } else if (addrType == AddressType.To) {
+        tokenUser.inTransferCount.plus(BI_ONE)
+        tokenUser.totalIncome.plus(amount)
+        tokenUser.balance.plus(amount)
     }
 
     tokenUser.save()
 
-    return tokenUser
+    return tokenUser as TokenUser
 }
 
 function getTokenUserInitial(token: Token, user: User): TokenUser {
@@ -203,7 +184,7 @@ function getTokenUserInitial(token: Token, user: User): TokenUser {
         tokenUser.save()
     }
 
-    return tokenUser
+    return tokenUser as TokenUser
 }
 
 function getToken(event: TransferEvent): Token {
@@ -212,16 +193,16 @@ function getToken(event: TransferEvent): Token {
     let token = getTokenInitial(tokenSymbol)
     token.transfersCount.plus(BI_ONE)
 
-    if (event.params.from.toHexString() != ADDRESS_ZERO) {
+    if (event.params.from != ADDRESS_ZERO) {
         token.holdersCount.plus(getNewHolderNumber(tokenSymbol, event.params.from))
     }
-    if (event.params.to.toHexString() != ADDRESS_ZERO && event.params.to.toHexString() != event.params.from.toHexString()) {
+    if (event.params.to != ADDRESS_ZERO && event.params.to != event.params.from) {
         token.holdersCount.plus(getNewHolderNumber(tokenSymbol, event.params.to))
     }
 
     token.save()
 
-    return token
+    return token as Token
 }
 
 function getTokenInitial(tokenSymbol: string): Token {
@@ -235,7 +216,7 @@ function getTokenInitial(tokenSymbol: string): Token {
         token.save()
     }
 
-    return token
+    return token as Token
 }
 
 function getNewHolderNumber(tokenSymbol: string, userAddr: Address): BigInt {
@@ -250,10 +231,10 @@ function getNewHolderNumber(tokenSymbol: string, userAddr: Address): BigInt {
         newHoldersNumber.plus(BI_ONE)
     }
 
-    return newHoldersNumber
+    return newHoldersNumber as BigInt
 }
 
-function getTokenUserId(tokenSymbol: string, userAddr: Address): string {
+function getTokenUserId(tokenSymbol: string, userAddr: Bytes): string {
     return tokenSymbol.concat('-').concat(userAddr.toHexString())
 }
 

@@ -1,9 +1,9 @@
 import {User} from './types/schema'
-import {Address, ByteArray, BigInt crypto} from '@graphprotocol/graph-ts'
+import {Address, ByteArray, BigInt, crypto} from '@graphprotocol/graph-ts'
 
-export const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000'
-export const BI_ZERO = BigInt.fromI32(0)
-export const BI_ONE = BigInt.fromI32(1)
+export let ADDRESS_ZERO = Address.fromString('0x0000000000000000000000000000000000000000')
+export let BI_ZERO = BigInt.fromI32(0)
+export let BI_ONE = BigInt.fromI32(1)
 
 export function getUser(address: Address): User {
     let user = User.load(address.toHexString())
@@ -12,25 +12,25 @@ export function getUser(address: Address): User {
         user.address = address
         user.save()
     }
-    return user
+    return user as User
 }
 
 export function generateId(val: string): string {
     return crypto.keccak256(ByteArray.fromUTF8(val ? val : '' + new Date().getTime().toString())).toHexString()
 }
 
-export enum AddressType {
-    From,
-    To
+export class AddressType {
+    static From: string = 'From'
+    static To: string = 'To'
 }
 
-export enum TransactionType {
-    Mint,
-    Burn,
-    Transfer
+export class TransactionType {
+    static Mint: string = 'Mint'
+    static Burn: string = 'Burn'
+    static Transfer: string = 'Transfer'
 }
 
-export enum TokenUserRoleField {
-    isSupplyController,
-    isAssetProtector
+export class TokenUserRoleField {
+    static isSupplyController: string  = 'isSupplyController'
+    static isAssetProtector: string = 'isAssetProtector'
 }
