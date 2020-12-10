@@ -7,25 +7,34 @@ import {
     PaxFactory as Factory
 } from './types/PaxFactory/PaxFactory'
 import {Supply, Token, TokenUser, Transaction, User} from './types/schema'
-import {Address, BigInt, Bytes} from '@graphprotocol/graph-ts'
-import {ADDRESS_ZERO, AddressType, BI_ONE, BI_ZERO, getUser, TokenUserRoleField, TransactionType} from './helper'
+import {Address, BigInt, Bytes, ethereum} from '@graphprotocol/graph-ts'
+import {
+    ADDRESS_ZERO,
+    AddressType,
+    BI_ONE,
+    BI_ZERO,
+    ContractInfo,
+    getUser,
+    TokenUserRoleField,
+    TransactionType
+} from './helper'
 
 let contract: Factory
+let contractInfo: ContractInfo
 
 export function handleTransfer(event: TransferEvent): void {
-
-    contract = Factory.bind(event.address)
+    initContract(event)
 
     //Get User Addresses
     let fromUser = getUser(event.params.from)
     let toUser = getUser(event.params.to)
 
     //Get Token
-    let token = getToken(event)
+    let token = getToken(contractInfo.symbol, event)
 
     //Get TokenUser records
-    let fromTokenUser = getTokenUser(token, fromUser, AddressType.From, event.params.value)
-    let toTokenUser = getTokenUser(token, toUser, AddressType.To, event.params.value)
+    let fromTokenUser = getTokenUser(token, fromUser, AddressType.From, event)
+    let toTokenUser = getTokenUser(token, toUser, AddressType.To, event)
 
 
     //Create Transaction
@@ -37,14 +46,12 @@ export function handleTransfer(event: TransferEvent): void {
 
 export function handleSetSupplyController(event: SupplyControllerSet): void {
     if (event.params.newSupplyController == event.params.oldSupplyController) return
+    initContract(event)
 
-    contract = Factory.bind(event.address)
-    let tokenSymbol = contract.symbol()
-
-    changeTokenUserRole(event.params.oldSupplyController, event.params.newSupplyController, tokenSymbol, TokenUserRoleField.isSupplyController)
+    changeTokenUserRole(event.params.oldSupplyController, event.params.newSupplyController, contractInfo.symbol, TokenUserRoleField.isSupplyController)
 
     //Change SupplyController on Supply entity
-    let supply = getSupplyInitial(tokenSymbol)
+    let supply = getSupplyInitial(contractInfo.symbol)
 
     supply.controllers = []
     let supplyControllerUsers = supply.controllers
@@ -56,34 +63,30 @@ export function handleSetSupplyController(event: SupplyControllerSet): void {
 
 export function handleSetAssetProtectionRole(event: AssetProtectionRoleSet): void {
     if (event.params.newAssetProtectionRole == event.params.oldAssetProtectionRole) return
+    initContract(event)
 
-    contract = Factory.bind(event.address)
-    let tokenSymbol = contract.symbol()
-
-    changeTokenUserRole(event.params.oldAssetProtectionRole, event.params.newAssetProtectionRole, tokenSymbol, TokenUserRoleField.isAssetProtector)
+    changeTokenUserRole(event.params.oldAssetProtectionRole, event.params.newAssetProtectionRole, contractInfo.symbol, TokenUserRoleField.isAssetProtector)
 }
 
 export function handleAddressUnfreeze(event: AddressUnfrozen): void {
-    contract = Factory.bind(event.address)
-    let tokenSymbol = contract.symbol()
+    initContract(event)
 
-    let tokenUser = TokenUser.load(getTokenUserId(tokenSymbol, event.params.addr))
+    let tokenUser = TokenUser.load(getTokenUserId(contractInfo.symbol, event.params.addr))
     if (tokenUser != null) {
         tokenUser.isFrozenBalance = false
         tokenUser.save()
 
         //Change Supply frozen balance
-        let supply = getSupplyInitial(tokenSymbol)
+        let supply = getSupplyInitial(contractInfo.symbol)
         supply.frozen.minus(tokenUser.balance)
         supply.save()
     }
 }
 
 export function handleAddressFreeze(event: AddressFrozen): void {
-    contract = Factory.bind(event.address)
-    let tokenSymbol = contract.symbol()
+    initContract(event)
 
-    let token = getTokenInitial(tokenSymbol)
+    let token = getTokenInitial(contractInfo.symbol)
     let user = getUser(event.params.addr)
     let tokenUser = getTokenUserInitial(token, user)
 
@@ -92,7 +95,7 @@ export function handleAddressFreeze(event: AddressFrozen): void {
 
     //Change Supply frozen balance
     let supply = getSupplyInitial(token.symbol)
-    supply.frozen.plus(tokenUser.balance)
+    supply.frozen = supply.frozen.plus(tokenUser.balance)
     supply.save()
 }
 
@@ -145,15 +148,16 @@ function getTransaction(event: TransferEvent, token: Token, fromUser: User, toUs
 }
 
 function getSupply(trx: Transaction, token: Token): Supply {
-    let supply = getSupplyInitial(token.symbol)
+    let supply = getSupplyInitial(token.id)
 
     if (trx.transactionType == TransactionType.Mint) {
-        supply.minted.plus(trx.amount)
-        supply.total.plus(trx.amount)
+        supply.minted = supply.minted.plus(trx.amount)
+        supply.total = supply.total.plus(trx.amount)
     } else if (trx.transactionType == TransactionType.Burn) {
-        supply.burned.plus(trx.amount)
-        supply.total.minus(trx.amount)
+        supply.burned = supply.burned.plus(trx.amount)
+        supply.total = supply.total.minus(trx.amount)
     }
+    supply.changedTimestamp = trx.transactionType == TransactionType.Mint || trx.transactionType == TransactionType.Burn ? trx.timestamp : null
 
     supply.save()
 
@@ -185,18 +189,19 @@ function getSupplyInitial(tokenSymbol: string): Supply {
     return supply as Supply
 }
 
-function getTokenUser(token: Token, user: User, addrType: string, amount: BigInt): TokenUser {
+function getTokenUser(token: Token, user: User, addrType: string, event: TransferEvent): TokenUser {
     let tokenUser = getTokenUserInitial(token, user)
-    tokenUser.transferCount.plus(BI_ONE)
+    tokenUser.transferCount = tokenUser.transferCount.plus(BI_ONE)
+    tokenUser.lastTransferTimestamp = event.block.timestamp
 
     if (addrType == AddressType.From) {
-        tokenUser.outTransferCount.plus(BI_ONE)
-        tokenUser.totalOutcome.plus(amount)
-        tokenUser.balance.minus(amount)
+        tokenUser.outTransferCount = tokenUser.outTransferCount.plus(BI_ONE)
+        tokenUser.totalOutcome = tokenUser.totalOutcome.plus(event.params.value)
+        tokenUser.balance = tokenUser.balance.minus(event.params.value)
     } else if (addrType == AddressType.To) {
-        tokenUser.inTransferCount.plus(BI_ONE)
-        tokenUser.totalIncome.plus(amount)
-        tokenUser.balance.plus(amount)
+        tokenUser.inTransferCount = tokenUser.inTransferCount.plus(BI_ONE)
+        tokenUser.totalIncome = tokenUser.totalIncome.plus(event.params.value)
+        tokenUser.balance = tokenUser.balance.plus(event.params.value)
     }
 
     tokenUser.save()
@@ -212,10 +217,8 @@ function getTokenUserInitial(token: Token, user: User): TokenUser {
         tokenUser.token = token.id
         tokenUser.user = user.id
         tokenUser.isFrozenBalance = false
-        let supplyControllerResult = contract.try_supplyController()
-        tokenUser.isSupplyController = !supplyControllerResult.reverted && supplyControllerResult.value == user.address
-        let assetProtectorResult = contract.try_assetProtectionRole()
-        tokenUser.isAssetProtector = !assetProtectorResult.reverted && assetProtectorResult.value == user.address
+        tokenUser.isSupplyController = false
+        tokenUser.isAssetProtector = false
         tokenUser.transferCount = BI_ZERO
         tokenUser.inTransferCount = BI_ZERO
         tokenUser.outTransferCount = BI_ZERO
@@ -228,19 +231,16 @@ function getTokenUserInitial(token: Token, user: User): TokenUser {
     return tokenUser as TokenUser
 }
 
-function getToken(event: TransferEvent): Token {
-    let tokenSymbol = contract.symbol()
-
+function getToken(tokenSymbol: string, event: TransferEvent): Token {
     let token = getTokenInitial(tokenSymbol)
-    token.transfersCount.plus(BI_ONE)
+    token.transfersCount = token.transfersCount.plus(BI_ONE)
 
     if (event.params.from != ADDRESS_ZERO) {
-        token.holdersCount.plus(getNewHolderNumber(tokenSymbol, event.params.from))
+        token.holdersCount = token.holdersCount.plus(getNewHolderNumber(token.id, event.params.from, event.params.value.neg()))
     }
     if (event.params.to != ADDRESS_ZERO && event.params.to != event.params.from) {
-        token.holdersCount.plus(getNewHolderNumber(tokenSymbol, event.params.to))
+        token.holdersCount = token.holdersCount.plus(getNewHolderNumber(token.id, event.params.to, event.params.value))
     }
-
     token.save()
 
     return token as Token
@@ -251,25 +251,26 @@ function getTokenInitial(tokenSymbol: string): Token {
     if (token == null) {
         token = new Token(tokenSymbol)
         token.symbol = tokenSymbol
-        token.name = contract.name()
         token.transfersCount = BI_ZERO
         token.holdersCount = BI_ZERO
-        token.save()
     }
+    token.name = contractInfo.name
+    token.save()
 
     return token as Token
 }
 
-function getNewHolderNumber(tokenSymbol: string, userAddr: Address): BigInt {
+function getNewHolderNumber(tokenSymbol: string, userAddr: Address, amount: BigInt): BigInt {
     let newHoldersNumber = BI_ZERO
 
-    let userHadToken = isUserHadToken(tokenSymbol, userAddr)
-    let balance = contract.balanceOf(userAddr)
+    let tokenUser = TokenUser.load(getTokenUserId(tokenSymbol, userAddr))
+    let newBalance = isTokenUserExist(tokenUser) ? tokenUser.balance : BI_ZERO
+    newBalance = newBalance.plus(amount)
 
-    if (BI_ZERO.equals(balance) && userHadToken) {
-        newHoldersNumber.minus(BI_ONE)
-    } else if (BI_ZERO.notEqual(balance) && !userHadToken) {
-        newHoldersNumber.plus(BI_ONE)
+    if (isTokenUserExist(tokenUser) && newBalance.le(BI_ZERO)) {
+        newHoldersNumber = newHoldersNumber.minus(BI_ONE)
+    } else if (!isTokenUserExist(tokenUser) && newBalance.gt(BI_ZERO)) {
+        newHoldersNumber = newHoldersNumber.plus(BI_ONE)
     }
 
     return newHoldersNumber as BigInt
@@ -279,7 +280,12 @@ function getTokenUserId(tokenSymbol: string, userAddr: Bytes): string {
     return tokenSymbol.concat('-').concat(userAddr.toHexString())
 }
 
-function isUserHadToken(tokenSymbol: string, userAddr: Address): boolean {
-    return TokenUser.load(getTokenUserId(tokenSymbol, userAddr)) != null
+function isTokenUserExist(tokenUser: TokenUser|null): boolean {
+    return tokenUser != null
+}
+
+function initContract(event: ethereum.Event): void {
+    contract = Factory.bind(event.address)
+    contractInfo = ContractInfo.build(contract);
 }
 

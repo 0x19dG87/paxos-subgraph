@@ -24,6 +24,7 @@ type TokenUser @entity {
     isFrozenBalance: Boolean #Indicates if user balance is frozen
     isSupplyController: Boolean #Indicates if user is supply controller
     isAssetProtector: Boolean #Indicates if user has access to manage assets
+    lastTransferTimestamp: BigInt #Timestamp of the last transaction made by user
     transferCount: BigInt! #Number of transactions
     inTransferCount: BigInt! #Number of income transactions
     outTransferCount: BigInt! #Number of outcome transactions
@@ -37,6 +38,7 @@ type Supply @entity {
     id: ID! #Token Symbol
     token: Token! #Token
     controllers: [User!]! #Collection of supply controllers
+    changedTimestamp: BigInt #Timestamp of the last supply change (minted/burned)
     minted: BigInt! #Minted Tokens Amount
     burned: BigInt! #Burned Tokens Amount
     frozen:BigInt! #Frozen Tokens Amount

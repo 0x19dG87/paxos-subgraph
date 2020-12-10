@@ -256,6 +256,23 @@ export class TokenUser extends Entity {
     this.set("isAssetProtector", Value.fromBoolean(value));
   }
 
+  get lastTransferTimestamp(): BigInt | null {
+    let value = this.get("lastTransferTimestamp");
+    if (value === null || value.kind == ValueKind.NULL) {
+      return null;
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set lastTransferTimestamp(value: BigInt | null) {
+    if (value === null) {
+      this.unset("lastTransferTimestamp");
+    } else {
+      this.set("lastTransferTimestamp", Value.fromBigInt(value as BigInt));
+    }
+  }
+
   get transferCount(): BigInt {
     let value = this.get("transferCount");
     return value.toBigInt();
@@ -357,6 +374,15 @@ export class Supply extends Entity {
 
   set controllers(value: Array<string>) {
     this.set("controllers", Value.fromStringArray(value));
+  }
+
+  get changedTimestamp(): BigInt {
+    let value = this.get("changedTimestamp");
+    return value.toBigInt();
+  }
+
+  set changedTimestamp(value: BigInt) {
+    this.set("changedTimestamp", Value.fromBigInt(value));
   }
 
   get minted(): BigInt {

@@ -2,20 +2,21 @@
     "name": "paxos-subgraph",
     "version": "0.1.0",
     "scripts": {
-        "create": "graph create --debug 0x19dG87/paxos-subgraph --node https://api.thegraph.com/deploy/",
+        "create": "graph create --debug --node https://api.thegraph.com/deploy/ 0x19dG87/paxos-powered-tokens",
         "codegen": "graph codegen --debug --output-dir src/types/",
         "build": "graph build --debug",
-        "deploy": "graph deploy --debug --ipfs https://api.thegraph.com/ipfs/ --node https://api.thegraph.com/deploy/ 0x19dG87/paxos-subgraph"
+        "deploy": "graph deploy --debug --ipfs https://api.thegraph.com/ipfs/ --node https://api.thegraph.com/deploy/ 0x19dG87/paxos-powered-tokens",
+        "auth": "graph auth https://api.thegraph.com/deploy/"
     },
     "devDependencies": {
         "@graphprotocol/graph-cli": "^0.19.0",
         "@graphprotocol/graph-ts": "^0.19.0"
     },
     "dependencies": {
+        "@truffle/contract": "^4.3.1",
+        "@truffle/hdwallet-provider": "^1.2.0",
         "babel-polyfill": "^6.26.0",
         "babel-register": "^6.26.0",
-        "truffle": "^5.1.56",
-        "truffle-contract": "^4.0.31",
-        "truffle-hdwallet-provider": "^1.0.17"
+        "truffle": "^5.1.56"
     }
 }

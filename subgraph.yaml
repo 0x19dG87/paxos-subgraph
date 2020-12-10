@@ -36,3 +36,67 @@ dataSources:
                 -   event: AssetProtectionRoleSet(indexed address,indexed address)
                     handler: handleSetAssetProtectionRole
             file: ./src/mapping.ts
+    -   kind: ethereum/contract
+        name: Paxg
+        network: mainnet
+        source:
+            address: '0x45804880de22913dafe09f4980848ece6ecbaf78'
+            abi: PaxFactory
+            startBlock: 8426430
+        mapping:
+            kind: ethereum/events
+            apiVersion: 0.0.4
+            language: wasm/assemblyscript
+            entities:
+                - Token
+                - User
+                - Supply
+                - TokenUser
+                - Transaction
+            abis:
+                -   name: PaxFactory
+                    file: ./abis/PaxFactory.json
+            eventHandlers:
+                -   event: AddressUnfrozen(indexed address)
+                    handler: handleAddressUnfreeze
+                -   event: AddressFrozen(indexed address)
+                    handler: handleAddressFreeze
+                -   event: Transfer(indexed address,indexed address,uint256)
+                    handler: handleTransfer
+                -   event: SupplyControllerSet(indexed address,indexed address)
+                    handler: handleSetSupplyController
+                -   event: AssetProtectionRoleSet(indexed address,indexed address)
+                    handler: handleSetAssetProtectionRole
+            file: ./src/mapping.ts
+    -   kind: ethereum/contract
+        name: Busd
+        network: mainnet
+        source:
+            address: '0x4fabb145d64652a948d72533023f6e7a623c7c53'
+            abi: PaxFactory
+            startBlock: 8493105
+        mapping:
+            kind: ethereum/events
+            apiVersion: 0.0.4
+            language: wasm/assemblyscript
+            entities:
+                - Token
+                - User
+                - Supply
+                - TokenUser
+                - Transaction
+            abis:
+                -   name: PaxFactory
+                    file: ./abis/PaxFactory.json
+            eventHandlers:
+                -   event: AddressUnfrozen(indexed address)
+                    handler: handleAddressUnfreeze
+                -   event: AddressFrozen(indexed address)
+                    handler: handleAddressFreeze
+                -   event: Transfer(indexed address,indexed address,uint256)
+                    handler: handleTransfer
+                -   event: SupplyControllerSet(indexed address,indexed address)
+                    handler: handleSetSupplyController
+                -   event: AssetProtectionRoleSet(indexed address,indexed address)
+                    handler: handleSetAssetProtectionRole
+            file: ./src/mapping.ts
