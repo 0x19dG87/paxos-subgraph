@@ -3,7 +3,6 @@ import {
     AddressUnfrozen,
     SupplyControllerSet,
     AssetProtectionRoleSet,
-    FrozenAddressWiped,
     Transfer as TransferEvent
 } from './types/PAX/Pax'
 import {Factory} from "./types/Factory/Factory"
@@ -37,7 +36,7 @@ export function handleTransfer(event: TransferEvent): void {
 }
 
 export function handleSetSupplyController(event: SupplyControllerSet): void {
-    if (event.params.newSupplyController.toHexString() == event.params.oldSupplyController.toHexString()) return
+    if (event.params.newSupplyController == event.params.oldSupplyController) return
 
     contract = Factory.bind(event.address)
     let tokenSymbol = contract.symbol()
@@ -45,19 +44,18 @@ export function handleSetSupplyController(event: SupplyControllerSet): void {
     changeTokenUserRole(event.params.oldSupplyController, event.params.newSupplyController, tokenSymbol, TokenUserRoleField.isSupplyController)
 
     //Change SupplyController on Supply entity
-    let supply = Supply.load(tokenSymbol)
-    if (supply != null) {
-        supply.controllers = []
-        let supplyControllerUsers = supply.controllers
-        supplyControllerUsers.push(event.params.newSupplyController.toHexString())
-        supply.controllers = supplyControllerUsers
+    let supply = getSupplyInitial(tokenSymbol)
 
-        supply.save()
-    }
+    supply.controllers = []
+    let supplyControllerUsers = supply.controllers
+    supplyControllerUsers.push(event.params.newSupplyController.toHexString())
+    supply.controllers = supplyControllerUsers
+
+    supply.save()
 }
 
 export function handleSetAssetProtectionRole(event: AssetProtectionRoleSet): void {
-    if (event.params.newAssetProtectionRole.toHexString() == event.params.oldAssetProtectionRole.toHexString()) return
+    if (event.params.newAssetProtectionRole == event.params.oldAssetProtectionRole) return
 
     contract = Factory.bind(event.address)
     let tokenSymbol = contract.symbol()
@@ -65,17 +63,37 @@ export function handleSetAssetProtectionRole(event: AssetProtectionRoleSet): voi
     changeTokenUserRole(event.params.oldAssetProtectionRole, event.params.newAssetProtectionRole, tokenSymbol, TokenUserRoleField.isAssetProtector)
 }
 
-
 export function handleAddressUnfreeze(event: AddressUnfrozen): void {
+    contract = Factory.bind(event.address)
+    let tokenSymbol = contract.symbol()
 
+    let tokenUser = TokenUser.load(getTokenUserId(tokenSymbol, event.params.addr))
+    if (tokenUser != null) {
+        tokenUser.isFrozenBalance = false
+        tokenUser.save()
+
+        //Change Supply frozen balance
+        let supply = getSupplyInitial(tokenSymbol)
+        supply.frozen.minus(tokenUser.balance)
+        supply.save()
+    }
 }
 
 export function handleAddressFreeze(event: AddressFrozen): void {
+    contract = Factory.bind(event.address)
+    let tokenSymbol = contract.symbol()
 
-}
+    let token = getTokenInitial(tokenSymbol)
+    let user = getUser(event.params.addr)
+    let tokenUser = getTokenUserInitial(token, user)
 
-export function handleWipeFrozenAddress(event: FrozenAddressWiped): void {
+    tokenUser.isFrozenBalance = true
+    tokenUser.save()
 
+    //Change Supply frozen balance
+    let supply = getSupplyInitial(token.symbol)
+    supply.frozen.plus(tokenUser.balance)
+    supply.save()
 }
 
 function changeTokenUserRole(oldAddress: Address, newAddress: Address, tokenSymbol: string, roleField: string): void {
@@ -118,20 +136,7 @@ function getTransaction(event: TransferEvent, token: Token, fromUser: User, toUs
 }
 
 function getSupply(trx: Transaction, token: Token): Supply {
-    let supply = Supply.load(token.id)
-    if (supply == null) {
-        supply = new Supply(token.id)
-        supply.token = token.id
-        supply.total = BI_ZERO
-        supply.minted = BI_ZERO
-        supply.burned = BI_ZERO
-        supply.frozen = BI_ZERO
-
-        supply.controllers = []
-        let supplyControllerUsers = supply.controllers
-        supplyControllerUsers.push(getUser(contract.supplyController()).id)
-        supply.controllers = supplyControllerUsers
-    }
+    let supply = getSupplyInitial(token.symbol)
 
     if (trx.transactionType == TransactionType.Mint) {
         supply.minted.plus(trx.amount)
@@ -142,6 +147,27 @@ function getSupply(trx: Transaction, token: Token): Supply {
     }
 
     supply.save()
+
+    return supply as Supply
+}
+
+function getSupplyInitial(tokenSymbol: string): Supply {
+    let supply = Supply.load(tokenSymbol)
+    if (supply == null) {
+        supply = new Supply(tokenSymbol)
+        supply.token = tokenSymbol
+        supply.total = BI_ZERO
+        supply.minted = BI_ZERO
+        supply.burned = BI_ZERO
+        supply.frozen = BI_ZERO
+
+        supply.controllers = []
+        let supplyControllerUsers = supply.controllers
+        supplyControllerUsers.push(getUser(contract.supplyController()).id)
+        supply.controllers = supplyControllerUsers
+
+        supply.save()
+    }
 
     return supply as Supply
 }
@@ -173,8 +199,8 @@ function getTokenUserInitial(token: Token, user: User): TokenUser {
         tokenUser.token = token.id
         tokenUser.user = user.id
         tokenUser.isFrozenBalance = false
-        tokenUser.isSupplyController = contract.supplyController().toHexString() == user.address.toHexString()
-        tokenUser.isAssetProtector = contract.assetProtectionRole().toHexString() == user.address.toHexString()
+        tokenUser.isSupplyController = contract.supplyController() == user.address
+        tokenUser.isAssetProtector = contract.assetProtectionRole() == user.address
         tokenUser.transferCount = BI_ZERO
         tokenUser.inTransferCount = BI_ZERO
         tokenUser.outTransferCount = BI_ZERO

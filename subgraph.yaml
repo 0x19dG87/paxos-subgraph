@@ -35,6 +35,4 @@ dataSources:
                     handler: handleSetSupplyController
                 -   event: AssetProtectionRoleSet(indexed address,indexed address)
                     handler: handleSetAssetProtectionRole
-                -   event: FrozenAddressWiped(indexed address)
-                    handler: handleWipeFrozenAddress
             file: ./src/mapping.ts

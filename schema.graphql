@@ -37,10 +37,10 @@ type Supply @entity {
     id: ID! #Token Symbol
     token: Token! #Token
     controllers: [User!]! #Collection of supply controllers
-    minted: BigInt!
-    burned: BigInt!
-    frozen:BigInt!
-    total: BigInt!
+    minted: BigInt! #Minted Tokens Amount
+    burned: BigInt! #Burned Tokens Amount
+    frozen:BigInt! #Frozen Tokens Amount
+    total: BigInt! #Total Supply
 }
 
 type Transaction @entity {
