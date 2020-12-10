@@ -25,10 +25,6 @@ dataSources:
                 -   name: Pax
                     file: ./abis/Pax.json
             eventHandlers:
-                -   event: SupplyDecreased(indexed address,uint256)
-                    handler: handleSupplyDecrease
-                -   event: SupplyIncreased(indexed address,uint256)
-                    handler: handleSupplyIncrease
                 -   event: AddressUnfrozen(indexed address)
                     handler: handleAddressUnfreeze
                 -   event: AddressFrozen(indexed address)
@@ -37,4 +33,8 @@ dataSources:
                     handler: handleTransfer
                 -   event: SupplyControllerSet(indexed address,indexed address)
                     handler: handleSetSupplyController
+                -   event: AssetProtectionRoleSet(indexed address,indexed address)
+                    handler: handleSetAssetProtectionRole
+                -   event: FrozenAddressWiped(indexed address)
+                    handler: handleWipeFrozenAddress
             file: ./src/mapping.ts

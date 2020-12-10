@@ -1,15 +1,15 @@
 type User @entity {
-    id: ID!
-    address: Bytes!
+    id: ID! #User Address
+    address: Bytes! #User Address
     tokens: [TokenUser!]! @derivedFrom(field: "user")
-    outTransactions: [Transaction]! @derivedFrom(field: "from")
-    inTransactions: [Transaction]! @derivedFrom(field: "to")
+    outTransactions: [Transaction]! @derivedFrom(field: "fromAddr")
+    inTransactions: [Transaction]! @derivedFrom(field: "toAddr")
 }
 
 type Token @entity {
-    id: ID!
-    symbol: String! #Token's symbol
-    name: String  #Token's name
+    id: ID! #Token Symbol
+    symbol: String! #Token Symbol
+    name: String  #Token Name
     transfersCount: BigInt! #Number of transfers
     holdersCount: BigInt! #Number of holders
     users: [TokenUser!]! @derivedFrom(field: "token")
@@ -18,34 +18,40 @@ type Token @entity {
 }
 
 type TokenUser @entity {
-    id: ID!
-    token: Token!
-    user: User!
-    balance: BigDecimal
-    isFrozenBalance: Boolean
-    isSupplyController: Boolean
-    transferCount: BigInt!
+    id: ID! #<Token Symbol> - <User Address>
+    token: Token! #Token
+    user: User! #User
+    isFrozenBalance: Boolean #Indicates if user balance is frozen
+    isSupplyController: Boolean #Indicates if user is supply controller
+    isAssetProtector: Boolean #Indicates if user has access to manage assets
+    transferCount: BigInt! #Number of transactions
+    inTransferCount: BigInt! #Number of income transactions
+    outTransferCount: BigInt! #Number of outcome transactions
+    balance: BigInt! #User Token Balance
+    totalIncome: BigInt! #User Token Income
+    totalOutcome: BigInt! #User Token Outcome
+
 }
 
 type Supply @entity {
-    id: ID!
-    token: Token!
-    controllers: [User!]!
-    minted: BigDecimal!
-    burned: BigDecimal!
-    frozen:BigDecimal!
-    total: BigDecimal!
+    id: ID! #Token Symbol
+    token: Token! #Token
+    controllers: [User!]! #Collection of supply controllers
+    minted: BigInt!
+    burned: BigInt!
+    frozen:BigInt!
+    total: BigInt!
 }
 
 type Transaction @entity {
-    id: ID!
-    block: BigInt!
-    timestamp: BigInt!
-    transactionType: TransactionType!
-    from: User!
-    to: User!
-    token: Token!
-    amount: BigDecimal!
+    id: ID! #Transaction Hash
+    block: BigInt! #Transaction Block
+    timestamp: BigInt! #Transaction Timestamp
+    transactionType: TransactionType! #Type - Mint, Burn, Transfer
+    fromAddr: User! #From User
+    toAddr: User! #To User
+    token: Token! #Transaction Token
+    amount: BigInt! #Transaction Token Amount
 }
 
 enum TransactionType {

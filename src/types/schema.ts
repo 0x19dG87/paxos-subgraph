@@ -229,23 +229,6 @@ export class TokenUser extends Entity {
     this.set("user", Value.fromString(value));
   }
 
-  get balance(): BigDecimal | null {
-    let value = this.get("balance");
-    if (value === null || value.kind == ValueKind.NULL) {
-      return null;
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set balance(value: BigDecimal | null) {
-    if (value === null) {
-      this.unset("balance");
-    } else {
-      this.set("balance", Value.fromBigDecimal(value as BigDecimal));
-    }
-  }
-
   get isFrozenBalance(): boolean {
     let value = this.get("isFrozenBalance");
     return value.toBoolean();
@@ -264,6 +247,15 @@ export class TokenUser extends Entity {
     this.set("isSupplyController", Value.fromBoolean(value));
   }
 
+  get isAssetProtector(): boolean {
+    let value = this.get("isAssetProtector");
+    return value.toBoolean();
+  }
+
+  set isAssetProtector(value: boolean) {
+    this.set("isAssetProtector", Value.fromBoolean(value));
+  }
+
   get transferCount(): BigInt {
     let value = this.get("transferCount");
     return value.toBigInt();
@@ -271,6 +263,51 @@ export class TokenUser extends Entity {
 
   set transferCount(value: BigInt) {
     this.set("transferCount", Value.fromBigInt(value));
+  }
+
+  get inTransferCount(): BigInt {
+    let value = this.get("inTransferCount");
+    return value.toBigInt();
+  }
+
+  set inTransferCount(value: BigInt) {
+    this.set("inTransferCount", Value.fromBigInt(value));
+  }
+
+  get outTransferCount(): BigInt {
+    let value = this.get("outTransferCount");
+    return value.toBigInt();
+  }
+
+  set outTransferCount(value: BigInt) {
+    this.set("outTransferCount", Value.fromBigInt(value));
+  }
+
+  get balance(): BigInt {
+    let value = this.get("balance");
+    return value.toBigInt();
+  }
+
+  set balance(value: BigInt) {
+    this.set("balance", Value.fromBigInt(value));
+  }
+
+  get totalIncome(): BigInt {
+    let value = this.get("totalIncome");
+    return value.toBigInt();
+  }
+
+  set totalIncome(value: BigInt) {
+    this.set("totalIncome", Value.fromBigInt(value));
+  }
+
+  get totalOutcome(): BigInt {
+    let value = this.get("totalOutcome");
+    return value.toBigInt();
+  }
+
+  set totalOutcome(value: BigInt) {
+    this.set("totalOutcome", Value.fromBigInt(value));
   }
 }
 
@@ -322,40 +359,40 @@ export class Supply extends Entity {
     this.set("controllers", Value.fromStringArray(value));
   }
 
-  get minted(): BigDecimal {
+  get minted(): BigInt {
     let value = this.get("minted");
-    return value.toBigDecimal();
+    return value.toBigInt();
   }
 
-  set minted(value: BigDecimal) {
-    this.set("minted", Value.fromBigDecimal(value));
+  set minted(value: BigInt) {
+    this.set("minted", Value.fromBigInt(value));
   }
 
-  get burned(): BigDecimal {
+  get burned(): BigInt {
     let value = this.get("burned");
-    return value.toBigDecimal();
+    return value.toBigInt();
   }
 
-  set burned(value: BigDecimal) {
-    this.set("burned", Value.fromBigDecimal(value));
+  set burned(value: BigInt) {
+    this.set("burned", Value.fromBigInt(value));
   }
 
-  get frozen(): BigDecimal {
+  get frozen(): BigInt {
     let value = this.get("frozen");
-    return value.toBigDecimal();
+    return value.toBigInt();
   }
 
-  set frozen(value: BigDecimal) {
-    this.set("frozen", Value.fromBigDecimal(value));
+  set frozen(value: BigInt) {
+    this.set("frozen", Value.fromBigInt(value));
   }
 
-  get total(): BigDecimal {
+  get total(): BigInt {
     let value = this.get("total");
-    return value.toBigDecimal();
+    return value.toBigInt();
   }
 
-  set total(value: BigDecimal) {
-    this.set("total", Value.fromBigDecimal(value));
+  set total(value: BigInt) {
+    this.set("total", Value.fromBigInt(value));
   }
 }
 
@@ -416,22 +453,22 @@ export class Transaction extends Entity {
     this.set("transactionType", Value.fromString(value));
   }
 
-  get from(): string {
-    let value = this.get("from");
+  get fromAddr(): string {
+    let value = this.get("fromAddr");
     return value.toString();
   }
 
-  set from(value: string) {
-    this.set("from", Value.fromString(value));
+  set fromAddr(value: string) {
+    this.set("fromAddr", Value.fromString(value));
   }
 
-  get to(): string {
-    let value = this.get("to");
+  get toAddr(): string {
+    let value = this.get("toAddr");
     return value.toString();
   }
 
-  set to(value: string) {
-    this.set("to", Value.fromString(value));
+  set toAddr(value: string) {
+    this.set("toAddr", Value.fromString(value));
   }
 
   get token(): string {
@@ -443,12 +480,12 @@ export class Transaction extends Entity {
     this.set("token", Value.fromString(value));
   }
 
-  get amount(): BigDecimal {
+  get amount(): BigInt {
     let value = this.get("amount");
-    return value.toBigDecimal();
+    return value.toBigInt();
   }
 
-  set amount(value: BigDecimal) {
-    this.set("amount", Value.fromBigDecimal(value));
+  set amount(value: BigInt) {
+    this.set("amount", Value.fromBigInt(value));
   }
 }
